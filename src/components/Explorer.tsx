@@ -83,12 +83,35 @@ export default ((userOpts?: Partial<ExplorerOptions>) => {
   const { OverflowList, overflowListAfterDOMLoaded } = OverflowListFactory();
 
   const ExplorerComponent: QuartzComponent = (props: QuartzComponentProps) => {
-    const { cfg } = props;
+    const { cfg, allFiles = [] } = props;
     const displayClass = (props as { displayClass?: "mobile-only" | "desktop-only" }).displayClass;
     const id = `explorer-${numExplorers++}`;
     const locale = cfg?.locale ?? "en-US";
 
     const title = opts.title ?? i18n(locale).components.explorer.title;
+
+    // Collect metadata from all page frontmatter on the server side
+    const explorerMetadata: Record<string, {
+      icon?: string;
+      noteOrder?: number;
+      folderOrder?: number;
+      collapse?: boolean;
+      collapsed?: boolean;
+    }> = {};
+
+    for (const file of allFiles) {
+      if (!file.slug) continue;
+      const fm = file.frontmatter;
+      if (fm) {
+        explorerMetadata[file.slug] = {
+          icon: fm.icon as string | undefined,
+          noteOrder: fm.noteOrder as number | undefined,
+          folderOrder: fm.folderOrder as number | undefined,
+          collapse: fm.collapse as boolean | undefined,
+          collapsed: fm.collapsed as boolean | undefined,
+        };
+      }
+    }
 
     return (
       <div
@@ -96,6 +119,7 @@ export default ((userOpts?: Partial<ExplorerOptions>) => {
         data-behavior={opts.folderClickBehavior}
         data-collapsed={opts.folderDefaultState}
         data-savestate={opts.useSavedState}
+        data-metadata={JSON.stringify(explorerMetadata)}
         data-data-fns={JSON.stringify({
           order: opts.order,
           sortFn: opts.sortFn?.toString(),

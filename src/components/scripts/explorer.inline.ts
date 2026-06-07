@@ -85,14 +85,23 @@ class FileTrieNode {
   }
 }
 
+// Map parsed server-side metadata globally on render
+let currentMetadata = {};
+
+const getMetadata = (node) => {
+  const slug = node.slug;
+  if (!slug) return {};
+  const cleanSlug = slug.replace(/^\/+|\/+$/g, "");
+  return currentMetadata[cleanSlug] || currentMetadata[cleanSlug + "/index"] || {};
+};
+
 // Process and sort nodes
 const defaultSortFn = (a, b) => {
-  const orderA = a.isFolder
-    ? (a.data?.frontmatter?.folderOrder ?? a.data?.folderOrder)
-    : (a.data?.frontmatter?.noteOrder ?? a.data?.noteOrder);
-  const orderB = b.isFolder
-    ? (b.data?.frontmatter?.folderOrder ?? b.data?.folderOrder)
-    : (b.data?.frontmatter?.noteOrder ?? b.data?.noteOrder);
+  const metaA = getMetadata(a);
+  const metaB = getMetadata(b);
+
+  const orderA = a.isFolder ? metaA.folderOrder : metaA.noteOrder;
+  const orderB = b.isFolder ? metaB.folderOrder : metaB.noteOrder;
 
   if (orderA !== undefined && orderB !== undefined) {
     return orderA - orderB;
@@ -140,30 +149,6 @@ async function buildFileTrie(dataFns) {
       }
       return [slug, entry];
     });
-
-    const hasFrontmatter = entries.some(([_, entry]) => entry && (entry.frontmatter || entry.icon || entry.noteOrder || entry.folderOrder));
-    if (!hasFrontmatter) {
-      try {
-        console.log("[Explorer] Index lacks frontmatter. Loading static/contentIndex.json...");
-        const contentIndexUrl = resolveBasePath("static/contentIndex.json");
-        const res = await fetch(contentIndexUrl);
-        if (res.ok) {
-          const fullData = await res.json();
-          if (fullData) {
-            contentData = fullData.content || fullData;
-            entries = Object.entries(contentData).map(([slug, entry]) => {
-              if (entry && !entry.slug) {
-                entry.slug = slug;
-              }
-              return [slug, entry];
-            });
-            console.log("[Explorer] Loaded contentIndex.json. Total entries:", entries.length);
-          }
-        }
-      } catch (err) {
-        console.error("[Explorer] Error fetching contentIndex.json:", err);
-      }
-    }
 
     const trie = FileTrieNode.fromEntries(entries);
     console.log("[Explorer] Trie root children:", trie.children.length);
@@ -243,7 +228,8 @@ function renderTree(
     const contentUl = clone.querySelector(".content");
 
     if (folderTitle) {
-      const iconName = node.data?.frontmatter?.icon || node.data?.icon || "folder";
+      const meta = getMetadata(node);
+      const iconName = meta.icon || "folder";
       const hasHtml = /<[a-z][\s\S]*>/i.test(node.displayName);
       if (hasHtml) {
         folderTitle.innerHTML = node.displayName;
@@ -269,7 +255,8 @@ function renderTree(
 
     // Determine default collapse state
     let defaultCollapsed = folderDefaultState === "collapsed";
-    const frontmatterCollapse = node.data?.frontmatter?.collapse ?? node.data?.frontmatter?.collapsed ?? node.data?.collapse ?? node.data?.collapsed;
+    const meta = getMetadata(node);
+    const frontmatterCollapse = meta.collapse ?? meta.collapsed;
     if (frontmatterCollapse !== undefined) {
       defaultCollapsed = frontmatterCollapse === true || frontmatterCollapse === "true";
     }
@@ -311,7 +298,8 @@ function renderTree(
     const link = clone.querySelector("a");
     if (link) {
       link.href = resolveBasePath(node.data.slug);
-      const iconName = node.data?.frontmatter?.icon || node.data?.icon || "file-text";
+      const meta = getMetadata(node);
+      const iconName = meta.icon || "file-text";
       const hasHtml = /<[a-z][\s\S]*>/i.test(node.displayName);
       if (hasHtml) {
         link.innerHTML = node.displayName;
@@ -353,6 +341,10 @@ async function handleNavOrRender(e) {
 
       // Clear existing content
       explorerUl.innerHTML = '<li class="overflow-end"></li>';
+
+      // Parse metadata parsed on the server side
+      const metadataAttr = explorer.dataset.metadata;
+      currentMetadata = metadataAttr ? JSON.parse(metadataAttr) : {};
 
       // Get configuration details
       const dataFns = explorer.dataset.dataFns;
