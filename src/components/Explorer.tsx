@@ -38,6 +38,24 @@ const defaultOptions: ExplorerOptions = {
     return node;
   },
   sortFn: (a: FileTrieNode, b: FileTrieNode) => {
+    const frontmatterA = a.data?.frontmatter as Record<string, any> | undefined;
+    const frontmatterB = b.data?.frontmatter as Record<string, any> | undefined;
+
+    const orderA = a.isFolder
+      ? (frontmatterA?.folderOrder as number | undefined)
+      : (frontmatterA?.noteOrder as number | undefined);
+    const orderB = b.isFolder
+      ? (frontmatterB?.folderOrder as number | undefined)
+      : (frontmatterB?.noteOrder as number | undefined);
+
+    if (orderA !== undefined && orderB !== undefined) {
+      return orderA - orderB;
+    } else if (orderA !== undefined) {
+      return -1;
+    } else if (orderB !== undefined) {
+      return 1;
+    }
+
     if ((!a.isFolder && !b.isFolder) || (a.isFolder && b.isFolder)) {
       return (a.displayName || "").localeCompare(b.displayName || "", undefined, {
         numeric: true,

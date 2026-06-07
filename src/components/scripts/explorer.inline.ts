@@ -87,6 +87,21 @@ class FileTrieNode {
 
 // Process and sort nodes
 const defaultSortFn = (a, b) => {
+  const orderA = a.isFolder
+    ? a.data?.frontmatter?.folderOrder
+    : a.data?.frontmatter?.noteOrder;
+  const orderB = b.isFolder
+    ? b.data?.frontmatter?.folderOrder
+    : b.data?.frontmatter?.noteOrder;
+
+  if (orderA !== undefined && orderB !== undefined) {
+    return orderA - orderB;
+  } else if (orderA !== undefined) {
+    return -1;
+  } else if (orderB !== undefined) {
+    return 1;
+  }
+
   if ((!a.isFolder && !b.isFolder) || (a.isFolder && b.isFolder)) {
     return a.displayName.localeCompare(b.displayName, undefined, {
       numeric: true,
@@ -164,8 +179,32 @@ async function buildFileTrie(dataFns) {
 // Render generation to prevent race conditions
 let currentRenderGeneration = 0;
 
+function loadLucideAndCreateIcons() {
+  if (window.lucide) {
+    window.lucide.createIcons();
+    return;
+  }
+  const script = document.createElement("script");
+  script.src = "https://unpkg.com/lucide@latest";
+  script.onload = () => {
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  };
+  document.head.appendChild(script);
+}
+
 // Render the file tree
-function renderTree(node, container, currentSlug, folderBehavior, savedState, pathPrefix = "") {
+function renderTree(
+  node,
+  container,
+  currentSlug,
+  folderBehavior,
+  savedState,
+  pathPrefix = "",
+  folderDefaultState = "collapsed",
+  useSavedState = true,
+) {
   const folderTemplate = document.getElementById("template-folder");
   const fileTemplate = document.getElementById("template-file");
 
@@ -182,7 +221,15 @@ function renderTree(node, container, currentSlug, folderBehavior, savedState, pa
     const folderOuter = clone.querySelector(".folder-outer");
     const contentUl = clone.querySelector(".content");
 
-    if (folderTitle) folderTitle.textContent = node.displayName || node.slugSegment;
+    if (folderTitle) {
+      const iconName = node.data?.frontmatter?.icon || "folder";
+      const hasHtml = /<[a-z][\s\S]*>/i.test(node.displayName);
+      if (hasHtml) {
+        folderTitle.innerHTML = node.displayName;
+      } else {
+        folderTitle.innerHTML = `<i data-lucide="${iconName}"></i> <span>${node.displayName || node.slugSegment}</span>`;
+      }
+    }
     if (folderContainer) folderContainer.dataset.folderpath = node.slug;
 
     if (folderBehavior === "link" && folderButton) {
@@ -199,8 +246,17 @@ function renderTree(node, container, currentSlug, folderBehavior, savedState, pa
       folderButton = folderLink;
     }
 
+    // Determine default collapse state
+    let defaultCollapsed = folderDefaultState === "collapsed";
+    const frontmatterCollapse = node.data?.frontmatter?.collapse ?? node.data?.frontmatter?.collapsed;
+    if (frontmatterCollapse !== undefined) {
+      defaultCollapsed = frontmatterCollapse === true || frontmatterCollapse === "true";
+    }
+
     // Check saved state for collapsed status
-    const isCollapsed = savedState[node.slug] !== undefined ? savedState[node.slug] : true; // Default collapsed
+    const isCollapsed = (useSavedState && savedState[node.slug] !== undefined)
+      ? savedState[node.slug]
+      : defaultCollapsed;
 
     // if this folder is a prefix of the current path we want to open it anyways
     const simpleFolderPath = simplifySlug(node.slug);
@@ -215,7 +271,16 @@ function renderTree(node, container, currentSlug, folderBehavior, savedState, pa
     // Render children
     if (node.children && node.children.length > 0 && contentUl) {
       for (const child of node.children) {
-        renderTree(child, contentUl, currentSlug, folderBehavior, savedState, currentPath);
+        renderTree(
+          child,
+          contentUl,
+          currentSlug,
+          folderBehavior,
+          savedState,
+          currentPath,
+          folderDefaultState,
+          useSavedState,
+        );
       }
     }
 
@@ -225,7 +290,13 @@ function renderTree(node, container, currentSlug, folderBehavior, savedState, pa
     const link = clone.querySelector("a");
     if (link) {
       link.href = resolveBasePath(node.data.slug);
-      link.textContent = node.displayName || node.slugSegment;
+      const iconName = node.data?.frontmatter?.icon || "file-text";
+      const hasHtml = /<[a-z][\s\S]*>/i.test(node.displayName);
+      if (hasHtml) {
+        link.innerHTML = node.displayName;
+      } else {
+        link.innerHTML = `<i data-lucide="${iconName}"></i> <span>${node.displayName || node.slugSegment}</span>`;
+      }
       if (node.data.slug === currentSlug) {
         link.classList.add("active", "is-active");
       }
@@ -262,9 +333,11 @@ async function handleNavOrRender(e) {
       // Clear existing content
       explorerUl.innerHTML = '<li class="overflow-end"></li>';
 
-      // Get data functions configuration
+      // Get configuration details
       const dataFns = explorer.dataset.dataFns;
       const folderBehavior = explorer.dataset.behavior || "collapse";
+      const folderDefaultState = explorer.dataset.collapsed || "collapsed";
+      const useSavedState = explorer.dataset.savestate === "true";
 
       // Build and render the tree
       console.log("[Explorer] Starting tree build...");
@@ -280,9 +353,19 @@ async function handleNavOrRender(e) {
 
           console.log("[Explorer] Rendering", trie.children.length, "children");
           for (const child of trie.children) {
-            renderTree(child, explorerUl, currentSlug, folderBehavior, savedState, "");
+            renderTree(
+              child,
+              explorerUl,
+              currentSlug,
+              folderBehavior,
+              savedState,
+              "",
+              folderDefaultState,
+              useSavedState,
+            );
           }
           console.log("[Explorer] Render complete, final list length:", explorerUl.children.length);
+          loadLucideAndCreateIcons();
         } else {
           console.warn("[Explorer] No trie or empty children");
         }
@@ -335,15 +418,21 @@ async function handleNavOrRender(e) {
           const isCollapsed = !childFolderContainer.classList.contains("open");
 
           const folderPath = folderContainer.dataset.folderpath;
-          const savedState = JSON.parse(localStorage.getItem("fileTree") || "[]");
-          const existingIndex = savedState.findIndex((item) => item.path === folderPath);
 
-          if (existingIndex >= 0) {
-            savedState[existingIndex].collapsed = isCollapsed;
-          } else {
-            savedState.push({ path: folderPath, collapsed: isCollapsed });
+          const nearestExplorer = this.closest(".explorer");
+          const useSavedState = nearestExplorer ? nearestExplorer.dataset.savestate === "true" : true;
+
+          if (useSavedState) {
+            const savedState = JSON.parse(localStorage.getItem("fileTree") || "[]");
+            const existingIndex = savedState.findIndex((item) => item.path === folderPath);
+
+            if (existingIndex >= 0) {
+              savedState[existingIndex].collapsed = isCollapsed;
+            } else {
+              savedState.push({ path: folderPath, collapsed: isCollapsed });
+            }
+            localStorage.setItem("fileTree", JSON.stringify(savedState));
           }
-          localStorage.setItem("fileTree", JSON.stringify(savedState));
         };
         icon.addEventListener("click", iconClickHandler);
         cleanupHandlers.push(() => icon.removeEventListener("click", iconClickHandler));
@@ -360,10 +449,7 @@ async function handleNavOrRender(e) {
           const folderPath = folderContainer.dataset.folderpath;
 
           if (folderBehavior === "link") {
-            // When folderBehavior is "link", the <button> has been replaced with an <a> tag
-            // that has the correct absolute href (e.g. "/features/"). Let the <a> tag's
-            // native click propagate to the SPA router — don't navigate imperatively here,
-            // as that would use a relative URL and break SPA navigation.
+            // When folderBehavior is "link", let the <a> tag's native click propagate.
             return;
           } else {
             evt.stopPropagation();
@@ -372,15 +458,20 @@ async function handleNavOrRender(e) {
             childFolderContainer.classList.toggle("open");
             const isCollapsed = !childFolderContainer.classList.contains("open");
 
-            const savedState = JSON.parse(localStorage.getItem("fileTree") || "[]");
-            const existingIndex = savedState.findIndex((item) => item.path === folderPath);
+            const nearestExplorer = this.closest(".explorer");
+            const useSavedState = nearestExplorer ? nearestExplorer.dataset.savestate === "true" : true;
 
-            if (existingIndex >= 0) {
-              savedState[existingIndex].collapsed = isCollapsed;
-            } else {
-              savedState.push({ path: folderPath, collapsed: isCollapsed });
+            if (useSavedState) {
+              const savedState = JSON.parse(localStorage.getItem("fileTree") || "[]");
+              const existingIndex = savedState.findIndex((item) => item.path === folderPath);
+
+              if (existingIndex >= 0) {
+                savedState[existingIndex].collapsed = isCollapsed;
+              } else {
+                savedState.push({ path: folderPath, collapsed: isCollapsed });
+              }
+              localStorage.setItem("fileTree", JSON.stringify(savedState));
             }
-            localStorage.setItem("fileTree", JSON.stringify(savedState));
           }
         };
         button.addEventListener("click", buttonClickHandler);

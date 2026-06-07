@@ -1,19 +1,22 @@
 @media all and (max-width: 800px) {
-  .page > #quartz-body > :not(.sidebar.left:has(.explorer)) {
+  .page>#quartz-body> :not(.sidebar.left:has(.explorer)) {
     transition: transform 300ms ease-in-out;
   }
-  .page > #quartz-body.lock-scroll > :not(.sidebar.left:has(.explorer)) {
+
+  .page>#quartz-body.lock-scroll> :not(.sidebar.left:has(.explorer)) {
     transform: translateX(100dvw);
     transition: transform 300ms ease-in-out;
   }
-  .page > #quartz-body .sidebar.left:has(.explorer) {
+
+  .page>#quartz-body .sidebar.left:has(.explorer) {
     box-sizing: border-box;
     position: sticky;
     background-color: var(--light);
     padding: 1rem 0 1rem 0;
     margin: 0;
   }
-  .page > #quartz-body .hide-until-loaded ~ .explorer-content {
+
+  .page>#quartz-body .hide-until-loaded~.explorer-content {
     display: none;
   }
 }
@@ -25,17 +28,21 @@
   min-height: 1.2rem;
   flex: 0 1 auto;
 }
+
 .explorer.collapsed {
   flex: 0 1 1.2rem;
 }
+
 .explorer.collapsed .fold {
   transform: rotateZ(-90deg);
 }
+
 .explorer .fold {
   margin-left: 0.5rem;
   transition: transform 0.3s ease;
   opacity: 0.8;
 }
+
 @media all and (max-width: 800px) {
   .explorer {
     order: -1;
@@ -47,25 +54,31 @@
     margin-bottom: auto;
   }
 }
+
 .explorer button.mobile-explorer {
   display: none;
 }
+
 .explorer button.desktop-explorer {
   display: flex;
 }
+
 @media all and (max-width: 800px) {
   .explorer button.mobile-explorer {
     display: flex;
   }
+
   .explorer button.desktop-explorer {
     display: none;
   }
 }
+
 .explorer svg {
   pointer-events: all;
   transition: transform 0.35s ease;
 }
-.explorer svg > polyline {
+
+.explorer svg>polyline {
   pointer-events: none;
 }
 
@@ -80,6 +93,7 @@ button.desktop-explorer {
   display: flex;
   align-items: center;
 }
+
 button.mobile-explorer h2,
 button.desktop-explorer h2 {
   font-size: 1rem;
@@ -93,23 +107,31 @@ button.desktop-explorer h2 {
   overflow-y: auto;
   margin-top: 0.5rem;
 }
+
 .explorer-content ul {
   list-style: none;
   margin: 0;
   padding: 0;
 }
+
 .explorer-content ul.explorer-ul {
   overscroll-behavior: contain;
 }
-.explorer-content ul li > a {
+
+.explorer-content ul li>a {
   color: var(--dark);
   opacity: 0.75;
   pointer-events: all;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
-.explorer-content ul li > a.active {
+
+.explorer-content ul li>a.active {
   opacity: 1;
   color: var(--tertiary);
 }
+
 .explorer-content .folder-outer {
   visibility: collapse;
   display: grid;
@@ -118,11 +140,13 @@ button.desktop-explorer h2 {
   transition-duration: 0.3s;
   transition-timing-function: ease-in-out;
 }
+
 .explorer-content .folder-outer.open {
   visibility: visible;
   grid-template-rows: 1fr;
 }
-.explorer-content .folder-outer > ul {
+
+.explorer-content .folder-outer>ul {
   overflow: hidden;
   margin-left: 6px;
   padding-left: 0.8rem;
@@ -135,18 +159,23 @@ button.desktop-explorer h2 {
   align-items: center;
   user-select: none;
 }
-.folder-container div > a {
+
+.folder-container div>a {
   color: var(--secondary);
   font-family: var(--headerFont);
   font-size: 0.95rem;
   font-weight: 600;
   line-height: 1.5rem;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
-.folder-container div > a:hover {
+
+.folder-container div>a:hover {
   color: var(--tertiary);
 }
-.folder-container div > button {
+
+.folder-container div>button {
   color: var(--dark);
   background-color: transparent;
   border: none;
@@ -158,9 +187,12 @@ button.desktop-explorer h2 {
   align-items: center;
   font-family: var(--headerFont);
 }
-.folder-container div > button span {
+
+.folder-container div>button span {
   font-size: 0.95rem;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--secondary);
   font-weight: 600;
   margin: 0;
@@ -176,9 +208,11 @@ button.desktop-explorer h2 {
   backface-visibility: visible;
   flex-shrink: 0;
 }
-li:has(> .folder-outer:not(.open)) > .folder-container > svg {
+
+li:has(> .folder-outer:not(.open))>.folder-container>svg {
   transform: rotate(-90deg);
 }
+
 .folder-icon:hover {
   color: var(--tertiary);
 }
@@ -187,17 +221,21 @@ li:has(> .folder-outer:not(.open)) > .folder-container > svg {
   .explorer.collapsed {
     flex: 0 0 34px;
   }
-  .explorer.collapsed > .explorer-content {
+
+  .explorer.collapsed>.explorer-content {
     transform: translateX(-100vw);
     visibility: hidden;
   }
+
   .explorer:not(.collapsed) {
     flex: 0 0 34px;
   }
-  .explorer:not(.collapsed) > .explorer-content {
+
+  .explorer:not(.collapsed)>.explorer-content {
     transform: translateX(0);
     visibility: visible;
   }
+
   .explorer .explorer-content {
     box-sizing: border-box;
     z-index: 100;
@@ -218,21 +256,32 @@ li:has(> .folder-outer:not(.open)) > .folder-container > svg {
     max-height: 100dvh;
     visibility: hidden;
   }
+
   .explorer .mobile-explorer {
     margin: 0;
     padding: 5px;
     z-index: 101;
   }
+
   .explorer .mobile-explorer.hide-until-loaded {
     display: none;
   }
+
   .explorer .mobile-explorer .lucide-menu {
     stroke: var(--darkgray);
   }
 }
 
 @media all and (max-width: 800px) {
-  .mobile-no-scroll .explorer-content > .explorer-ul {
+  .mobile-no-scroll .explorer-content>.explorer-ul {
     overscroll-behavior: contain;
   }
+}
+
+/* Custom Lucide Icon Styles inside the Explorer */
+.explorer-content svg.lucide {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke-width: 2px;
 }
