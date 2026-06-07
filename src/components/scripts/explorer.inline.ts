@@ -88,11 +88,11 @@ class FileTrieNode {
 // Process and sort nodes
 const defaultSortFn = (a, b) => {
   const orderA = a.isFolder
-    ? a.data?.frontmatter?.folderOrder
-    : a.data?.frontmatter?.noteOrder;
+    ? (a.data?.frontmatter?.folderOrder ?? a.data?.folderOrder)
+    : (a.data?.frontmatter?.noteOrder ?? a.data?.noteOrder);
   const orderB = b.isFolder
-    ? b.data?.frontmatter?.folderOrder
-    : b.data?.frontmatter?.noteOrder;
+    ? (b.data?.frontmatter?.folderOrder ?? b.data?.folderOrder)
+    : (b.data?.frontmatter?.noteOrder ?? b.data?.noteOrder);
 
   if (orderA !== undefined && orderB !== undefined) {
     return orderA - orderB;
@@ -125,23 +125,33 @@ function processTrie(trie, sortFn, filterFn, mapFn) {
 async function buildFileTrie(dataFns) {
   try {
     console.log("[Explorer] Fetching content index...");
-    const data = await fetchData;
-    console.log("[Explorer] Fetched data keys:", Object.keys(data).slice(0, 5));
+    let data = await fetchData;
+    console.log("[Explorer] Fetched data keys:", Object.keys(data || {}).slice(0, 5));
 
     if (!data) {
       console.error("[Explorer] No data received");
       return null;
     }
 
-    // Handle both formats: { "slug": {...} } or { "content": { "slug": {...} } }
-    const contentData = data.content || data;
-    const entries = Object.entries(contentData);
+    let contentData = data.content || data;
+    let entries = Object.entries(contentData);
 
-    console.log("[Explorer] Entry count:", entries.length);
-
-    if (entries.length === 0) {
-      console.warn("[Explorer] No content entries found");
-      return null;
+    const hasFrontmatter = entries.some(([_, entry]) => entry && (entry.frontmatter || entry.icon || entry.noteOrder || entry.folderOrder));
+    if (!hasFrontmatter) {
+      try {
+        console.log("[Explorer] Index lacks frontmatter. Loading contentIndex.json...");
+        const contentIndexUrl = resolveBasePath("contentIndex.json");
+        const res = await fetch(contentIndexUrl);
+        if (res.ok) {
+          const fullData = await res.json();
+          if (fullData) {
+            contentData = fullData.content || fullData;
+            entries = Object.entries(contentData);
+          }
+        }
+      } catch (err) {
+        console.error("[Explorer] Error fetching contentIndex.json:", err);
+      }
     }
 
     const trie = FileTrieNode.fromEntries(entries);
@@ -222,7 +232,7 @@ function renderTree(
     const contentUl = clone.querySelector(".content");
 
     if (folderTitle) {
-      const iconName = node.data?.frontmatter?.icon || "folder";
+      const iconName = node.data?.frontmatter?.icon || node.data?.icon || "folder";
       const hasHtml = /<[a-z][\s\S]*>/i.test(node.displayName);
       if (hasHtml) {
         folderTitle.innerHTML = node.displayName;
@@ -248,7 +258,7 @@ function renderTree(
 
     // Determine default collapse state
     let defaultCollapsed = folderDefaultState === "collapsed";
-    const frontmatterCollapse = node.data?.frontmatter?.collapse ?? node.data?.frontmatter?.collapsed;
+    const frontmatterCollapse = node.data?.frontmatter?.collapse ?? node.data?.frontmatter?.collapsed ?? node.data?.collapse ?? node.data?.collapsed;
     if (frontmatterCollapse !== undefined) {
       defaultCollapsed = frontmatterCollapse === true || frontmatterCollapse === "true";
     }
@@ -290,7 +300,7 @@ function renderTree(
     const link = clone.querySelector("a");
     if (link) {
       link.href = resolveBasePath(node.data.slug);
-      const iconName = node.data?.frontmatter?.icon || "file-text";
+      const iconName = node.data?.frontmatter?.icon || node.data?.icon || "file-text";
       const hasHtml = /<[a-z][\s\S]*>/i.test(node.displayName);
       if (hasHtml) {
         link.innerHTML = node.displayName;
