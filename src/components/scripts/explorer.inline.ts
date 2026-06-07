@@ -134,7 +134,12 @@ async function buildFileTrie(dataFns) {
     }
 
     let contentData = data.content || data;
-    let entries = Object.entries(contentData);
+    let entries = Object.entries(contentData).map(([slug, entry]) => {
+      if (entry && !entry.slug) {
+        entry.slug = slug;
+      }
+      return [slug, entry];
+    });
 
     const hasFrontmatter = entries.some(([_, entry]) => entry && (entry.frontmatter || entry.icon || entry.noteOrder || entry.folderOrder));
     if (!hasFrontmatter) {
@@ -146,7 +151,13 @@ async function buildFileTrie(dataFns) {
           const fullData = await res.json();
           if (fullData) {
             contentData = fullData.content || fullData;
-            entries = Object.entries(contentData);
+            entries = Object.entries(contentData).map(([slug, entry]) => {
+              if (entry && !entry.slug) {
+                entry.slug = slug;
+              }
+              return [slug, entry];
+            });
+            console.log("[Explorer] Loaded contentIndex.json. Total entries:", entries.length);
           }
         }
       } catch (err) {
