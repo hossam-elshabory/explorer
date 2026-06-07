@@ -139,8 +139,8 @@ async function buildFileTrie(dataFns) {
     const hasFrontmatter = entries.some(([_, entry]) => entry && (entry.frontmatter || entry.icon || entry.noteOrder || entry.folderOrder));
     if (!hasFrontmatter) {
       try {
-        console.log("[Explorer] Index lacks frontmatter. Loading contentIndex.json...");
-        const contentIndexUrl = resolveBasePath("contentIndex.json");
+        console.log("[Explorer] Index lacks frontmatter. Loading static/contentIndex.json...");
+        const contentIndexUrl = resolveBasePath("static/contentIndex.json");
         const res = await fetch(contentIndexUrl);
         if (res.ok) {
           const fullData = await res.json();
