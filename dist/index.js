@@ -389,29 +389,8 @@ var defaultOptions = {
   mapFn: (node) => {
     return node;
   },
-  sortFn: (a2, b2) => {
-    const frontmatterA = a2.data?.frontmatter;
-    const frontmatterB = b2.data?.frontmatter;
-    const orderA = a2.isFolder ? frontmatterA?.folderOrder : frontmatterA?.noteOrder;
-    const orderB = b2.isFolder ? frontmatterB?.folderOrder : frontmatterB?.noteOrder;
-    if (orderA !== void 0 && orderB !== void 0) {
-      return orderA - orderB;
-    } else if (orderA !== void 0) {
-      return -1;
-    } else if (orderB !== void 0) {
-      return 1;
-    }
-    if (!a2.isFolder && !b2.isFolder || a2.isFolder && b2.isFolder) {
-      return (a2.displayName || "").localeCompare(b2.displayName || "", void 0, {
-        numeric: true,
-        sensitivity: "base"
-      });
-    }
-    if (!a2.isFolder && b2.isFolder) {
-      return 1;
-    }
-    return -1;
-  },
+  sortFn: void 0,
+  // Handled dynamically by explorer.inline.ts fallback sorting
   filterFn: (node) => node.slugSegment !== "tags",
   order: ["filter", "map", "sort"]
 };
