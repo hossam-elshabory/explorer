@@ -92,7 +92,26 @@ const getMetadata = (node) => {
   const slug = node.slug;
   if (!slug) return {};
   const cleanSlug = slug.replace(/^\/+|\/+$/g, "");
-  return currentMetadata[cleanSlug] || currentMetadata[cleanSlug + "/index"] || {};
+
+  const candidates = [cleanSlug];
+  if (cleanSlug.endsWith("/index")) {
+    candidates.push(cleanSlug.slice(0, -6));
+  } else {
+    candidates.push(cleanSlug + "/index");
+  }
+
+  for (const cand of candidates) {
+    if (currentMetadata[cand]) {
+      return currentMetadata[cand];
+    }
+  }
+  return {};
+};
+
+const parseOrder = (val) => {
+  if (val === undefined || val === null) return undefined;
+  const num = Number(val);
+  return isNaN(num) ? undefined : num;
 };
 
 // Process and sort nodes
@@ -100,8 +119,8 @@ const defaultSortFn = (a, b) => {
   const metaA = getMetadata(a);
   const metaB = getMetadata(b);
 
-  const orderA = a.isFolder ? metaA.folderOrder : metaA.noteOrder;
-  const orderB = b.isFolder ? metaB.folderOrder : metaB.noteOrder;
+  const orderA = parseOrder(a.isFolder ? metaA.folderOrder : metaA.noteOrder);
+  const orderB = parseOrder(b.isFolder ? metaB.folderOrder : metaB.noteOrder);
 
   if (orderA !== undefined && orderB !== undefined) {
     return orderA - orderB;
